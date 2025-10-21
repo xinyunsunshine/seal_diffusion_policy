@@ -63,12 +63,21 @@ class TrainDiffusionUnetLowdimWorkspace(BaseWorkspace):
     def run(self):
         cfg = copy.deepcopy(self.cfg)
 
-        # resume training
-        if cfg.training.resume:
-            lastest_ckpt_path = self.get_checkpoint_path()
-            if lastest_ckpt_path.is_file():
-                print(f"Resuming from checkpoint {lastest_ckpt_path}")
-                self.load_checkpoint(path=lastest_ckpt_path)
+        # finetune from pretrained checkpoint
+        if cfg.training.finetune:
+            sft_ckpt_path = cfg.training.pretrained_ckpt_path
+            
+            if pathlib.Path(sft_ckpt_path).exists():
+                print(f"Start finetuning from checkpoint {sft_ckpt_path}")
+                self.load_checkpoint(path=sft_ckpt_path)
+
+        else: # if not finetune, check if resuming
+            # resume training
+            if cfg.training.resume:
+                lastest_ckpt_path = self.get_checkpoint_path()
+                if lastest_ckpt_path.is_file():
+                    print(f"Resuming from checkpoint {lastest_ckpt_path}")
+                    self.load_checkpoint(path=lastest_ckpt_path)
 
         # configure dataset
         dataset: BaseLowdimDataset
@@ -148,6 +157,15 @@ class TrainDiffusionUnetLowdimWorkspace(BaseWorkspace):
             cfg.training.checkpoint_every = 1
             cfg.training.val_every = 1
             cfg.training.sample_every = 1
+
+        policy = self.model
+        if cfg.training.use_ema:
+            policy = self.ema_model
+        policy.eval()
+        runner_log = env_runner.run(policy)
+        # log all
+        print(runner_log)
+        # breakpoint()
 
         # training loop
         log_path = os.path.join(self.output_dir, 'logs.json.txt')
