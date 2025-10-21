@@ -59,6 +59,7 @@ def main(checkpoint, output_dir, device):
             json_log[key] = value
     out_path = os.path.join(output_dir, 'eval_log.json')
     json.dump(json_log, open(out_path, 'w'), indent=2, sort_keys=True)
+    print(f"Eval log saved to {out_path}")
 
 if __name__ == '__main__':
     main()
