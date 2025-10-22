@@ -49,12 +49,15 @@ def test_robomimic_episode_filtering():
     try:
         # Create test data with 5 episodes
         # create_test_hdf5_data(test_file, num_episodes=5, episode_length=10)
-        test_file = "data/robomimic/datasets/square/mh/low_dim_abs.hdf5"
+        test_file = "data/new_demos/square_mh_policy_demos_test.hdf5"
+        finetune = True
+        # "data/robomimic/datasets/square/mh/low_dim_abs.hdf5"
         # "data/new_demos/square_mh_policy_demos_test.hdf5"
         # Test 1: Load all episodes (default behavior)
         dataset_all = RobomimicReplayLowdimDataset(
             dataset_path=test_file,
-            val_ratio=0.0
+            val_ratio=0.0,
+            finetune=finetune
         )
         print(f"All episodes: {dataset_all.replay_buffer.n_episodes} episodes")
         # assert dataset_all.replay_buffer.n_episodes == 5, f"Expected 5 episodes, got {dataset_all.replay_buffer.n_episodes}"
@@ -64,7 +67,8 @@ def test_robomimic_episode_filtering():
         dataset_filtered = RobomimicReplayLowdimDataset(
             dataset_path=test_file,
             val_ratio=0.0,
-            episode_indices=selected_episodes
+            episode_indices=selected_episodes,
+            finetune=finetune
         )
         print(f"Filtered episodes {selected_episodes}: {dataset_filtered.replay_buffer.n_episodes} episodes")
         assert dataset_filtered.replay_buffer.n_episodes == 1, f"Expected 3 episodes, got {dataset_filtered.replay_buffer.n_episodes}"
@@ -74,7 +78,8 @@ def test_robomimic_episode_filtering():
             invalid_dataset = RobomimicReplayLowdimDataset(
                 dataset_path=test_file,
                 val_ratio=0.0,
-                episode_indices={0, 2, 310}  # 10 is invalid
+                episode_indices={0, 2, 310},  # 10 is invalid,
+                finetune=finetune
             )
             assert False, "Should have raised ValueError for invalid indices"
         except ValueError as e:
