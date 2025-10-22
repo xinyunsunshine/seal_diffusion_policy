@@ -9,7 +9,7 @@ checkpoint:
     mode: max
     monitor_key: test_mean_score
 dataloader:
-  batch_size: 256
+  batch_size: 16
   num_workers: 1
   persistent_workers: false
   pin_memory: true
@@ -17,10 +17,10 @@ dataloader:
 ema:
   _target_: diffusion_policy.model.diffusion.ema_model.EMAModel
   inv_gamma: 1.0
-  max_value: 0.9999
+  max_value: 0.99
   min_value: 0.0
   power: 0.75
-  update_after_step: 0
+  update_after_step: 100
 exp_name: obs_global_rerun
 horizon: 16
 keypoint_dim: 3
@@ -31,7 +31,7 @@ logging:
   mode: online
   name: 2023.02.23-19.51.19_train_diffusion_unet_lowdim_square_lowdim
   project: seal_diffusion_policy
-  resume: true
+  resume: false
   tags:
   - train_diffusion_unet_lowdim
   - square_lowdim
@@ -52,8 +52,8 @@ optimizer:
   - 0.95
   - 0.999
   eps: 1.0e-08
-  lr: 0.0001
-  weight_decay: 1.0e-06
+  lr: 5e-5
+  weight_decay: 0 #1.0e-06
 past_action_visible: false
 policy:
   _target_: diffusion_policy.policy.diffusion_unet_lowdim_policy.DiffusionUnetLowdimPolicy
@@ -156,20 +156,20 @@ training:
   debug: false
   device: cuda:0
   gradient_accumulate_every: 1
-  lr_scheduler: cosine
-  lr_warmup_steps: 500
-  max_train_steps: null
+  lr_scheduler: cosine #constant_with_warmup #cosine
+  lr_warmup_steps: 50
+  max_train_steps: 500
   max_val_steps: null
   num_epochs: 5000
-  resume: true
-  rollout_every: 50
-  sample_every: 5
+  resume: false
+  rollout_every: 1
+  sample_every: 1
   seed: 42
   tqdm_interval_sec: 1.0
   use_ema: true
   val_every: 1
 val_dataloader:
-  batch_size: 256
+  batch_size: 16
   num_workers: 1
   persistent_workers: false
   pin_memory: true

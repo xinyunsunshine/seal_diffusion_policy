@@ -6,17 +6,17 @@ set -e
 
 # Define the command with parameters
 CONFIG_DIR="config"
-CONFIG_NAME="dp_square_mh.yaml"
+CONFIG_NAME="dp_square_mh_sft.yaml"
 SEED=42
 DEVICE="cuda:0"
-EPOCH_NUM=5
-CKPT_EVERY=1
+EPOCH_NUM=30
+CKPT_EVERY=5
 VAL_EVERY=10
 MAX_TRAIN_EPISODES=300
 
 # HYDRA_RUN_DIR="data/outputs/$(date +%Y.%m.%d)/$(date +%H.%M.%S)_lr${LR}_sigma${X_SIGMA}_k${k}" #the old dir name
-HYDRA_RUN_DIR="data/outputs/square/sft2"
-LOG_NAME="square_training_sft2"
+HYDRA_RUN_DIR="data/outputs/square/sft7"
+LOG_NAME="square_training_sft7"
 PRETRAINED_CKPT_PATH="'data/outputs/square/pre_train/checkpoints/epoch=0750-test_mean_score=0.440.ckpt'"
 DATAPATH="data/new_demos/square_mh_policy_demos_test.hdf5"
 
@@ -38,8 +38,9 @@ python train.py \
     training.val_every=$VAL_EVERY\
     training.checkpoint_every=$CKPT_EVERY\
     training.rollout_every=$CKPT_EVERY\
-    # task.dataset.dataset_path=$DATAPATH\
-    # task.dataset.episode_indices="[0]"
+    task.dataset.dataset_path=$DATAPATH\
+    task.dataset.finetune=true\
+    task.dataset.episode_indices="[7]"
 
 # Save the directory path
 echo "$HYDRA_RUN_DIR" > last_run_dir.txt
