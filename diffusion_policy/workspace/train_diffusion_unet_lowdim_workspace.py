@@ -74,6 +74,11 @@ class TrainDiffusionUnetLowdimWorkspace(BaseWorkspace):
                 print(f"Start finetuning from checkpoint {sft_ckpt_path}")
                 self.load_checkpoint(path=sft_ckpt_path)
 
+                # Recreate optimizer with current config LR for fine-tuning
+                self.optimizer = hydra.utils.instantiate(
+                    cfg.optimizer, params=self.model.parameters())
+                print(f"Recreated optimizer with LR: {cfg.optimizer.lr}")
+
                 # Reset training state for fine-tuning
                 print(f"Resetting epoch from {self.epoch} to 0 for fine-tuning")
                 print(f"Resetting global_step from {self.global_step} to 0 for fine-tuning")
@@ -217,6 +222,11 @@ class TrainDiffusionUnetLowdimWorkspace(BaseWorkspace):
         with JsonLogger(log_path) as json_logger:
             for local_epoch_idx in range(cfg.training.num_epochs):
                 step_log = dict()
+
+                # Print LR at start of each epoch
+                # current_lr = self.optimizer.param_groups[0]['lr']
+                # print(f"Epoch {self.epoch}: Current LR = {current_lr}")
+
                 # ========= train for this epoch ==========
                 train_losses = list()
                 with tqdm.tqdm(train_dataloader, desc=f"Training epoch {self.epoch}", 
