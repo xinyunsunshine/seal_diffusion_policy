@@ -1,4 +1,4 @@
-from typing import Dict, List
+from typing import Dict, List, Optional, Set
 import torch
 import numpy as np
 import h5py
@@ -34,7 +34,8 @@ class RobomimicReplayLowdimDataset(BaseLowdimDataset):
             use_legacy_normalizer=False,
             seed=42,
             val_ratio=0.0,
-            max_train_episodes=None
+            max_train_episodes=None,
+            episode_indices: Optional[Set[int]]=None
         ):
         obs_keys = list(obs_keys)
         rotation_transformer = RotationTransformer(
@@ -43,7 +44,22 @@ class RobomimicReplayLowdimDataset(BaseLowdimDataset):
         replay_buffer = ReplayBuffer.create_empty_numpy()
         with h5py.File(dataset_path) as file:
             demos = file['data']
-            for i in tqdm(range(len(demos)), desc="Loading hdf5 to ReplayBuffer"):
+            demo_count = len(demos)
+            
+            # If episode_indices is specified, only load those episodes
+            if episode_indices is not None:
+                # Validate episode indices
+                invalid_indices = [idx for idx in episode_indices if idx >= demo_count or idx < 0]
+                if invalid_indices:
+                    raise ValueError(f"Invalid episode indices {invalid_indices}. Dataset only has {demo_count} episodes (indices 0-{demo_count-1})")
+                
+                indices_to_load = sorted(episode_indices)
+                desc = f"Loading {len(indices_to_load)} selected episodes to ReplayBuffer"
+            else:
+                indices_to_load = range(demo_count)
+                desc = "Loading hdf5 to ReplayBuffer"
+            
+            for i in tqdm(indices_to_load, desc=desc):
                 demo = demos[f'demo_{i}']
                 episode = _data_to_obs(
                     raw_obs=demo['obs'],
