@@ -74,6 +74,12 @@ class TrainDiffusionUnetLowdimWorkspace(BaseWorkspace):
                 print(f"Start finetuning from checkpoint {sft_ckpt_path}")
                 self.load_checkpoint(path=sft_ckpt_path)
 
+                # Reset training state for fine-tuning
+                print(f"Resetting epoch from {self.epoch} to 0 for fine-tuning")
+                print(f"Resetting global_step from {self.global_step} to 0 for fine-tuning")
+                self.epoch = 0
+                self.global_step = 0
+
         else: # if not finetune, check if resuming
             # resume training
             if cfg.training.resume:
@@ -180,16 +186,31 @@ class TrainDiffusionUnetLowdimWorkspace(BaseWorkspace):
             cfg.training.val_every = 1
             cfg.training.sample_every = 1
 
-        policy = self.model
-        # if cfg.training.use_ema:
-        #     policy = self.ema_model
-        # policy.eval()
-        # runner_log = env_runner.run(policy)
-        # # log all
-        # print(runner_log)
-        # breakpoint()
-        # policy.train()
-
+        # ========= Evaluate pretrained model before fine-tuning ==========
+        if cfg.training.finetune:
+            print("Evaluating pretrained model before fine-tuning...")
+            policy = self.model
+            if cfg.training.use_ema:
+                policy = self.ema_model
+            policy.eval()
+            
+            # Run evaluation on pretrained model
+            pretrained_runner_log = env_runner.run(policy)
+            print(f"Pretrained model performance: {pretrained_runner_log['test/mean_score']}")
+            
+            # Log pretrained performance as epoch 0
+            pretrained_step_log = {
+                'epoch': 0,
+                'global_step': 0,
+                **pretrained_runner_log
+            }
+            wandb_run.log(pretrained_step_log, step=0)
+            
+            # Now start training from epoch 1
+            self.epoch = 1
+            self.global_step = 1
+            
+            policy.train()
 
         # training loop
         log_path = os.path.join(self.output_dir, 'logs.json.txt')
