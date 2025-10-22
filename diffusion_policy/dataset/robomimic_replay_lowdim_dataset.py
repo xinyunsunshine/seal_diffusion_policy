@@ -35,7 +35,8 @@ class RobomimicReplayLowdimDataset(BaseLowdimDataset):
             seed=42,
             val_ratio=0.0,
             max_train_episodes=None,
-            episode_indices: Optional[Set[int]]=None
+            episode_indices: Optional[Set[int]]=None,
+            finetune=False
         ):
         obs_keys = list(obs_keys)
         rotation_transformer = RotationTransformer(
@@ -66,7 +67,8 @@ class RobomimicReplayLowdimDataset(BaseLowdimDataset):
                     raw_actions=demo['actions'][:].astype(np.float32),
                     obs_keys=obs_keys,
                     abs_action=abs_action,
-                    rotation_transformer=rotation_transformer)
+                    rotation_transformer=rotation_transformer,
+                    finetune=finetune)
                 replay_buffer.add_episode(episode)
 
         val_mask = get_val_mask(
@@ -94,6 +96,7 @@ class RobomimicReplayLowdimDataset(BaseLowdimDataset):
         self.pad_before = pad_before
         self.pad_after = pad_after
         self.use_legacy_normalizer = use_legacy_normalizer
+        self.finetune = finetune
     
     def get_validation_dataset(self):
         val_set = copy.copy(self)
@@ -154,12 +157,25 @@ def normalizer_from_stat(stat):
         input_stats_dict=stat
     )
     
-def _data_to_obs(raw_obs, raw_actions, obs_keys, abs_action, rotation_transformer):
-    obs = np.concatenate([
-        raw_obs[key] for key in obs_keys
-    ], axis=-1).astype(np.float32)
+def _data_to_obs(raw_obs, raw_actions, obs_keys, abs_action, rotation_transformer, finetune=False):
+    if finetune:
+        # Extract flattened observations from HDF5 Group
+        # The flattened observations are typically stored under an 'obs' key
+        if hasattr(raw_obs, 'keys'):
+            # If it's an HDF5 Group, look for 'obs' key or use the first available key
+            if 'obs' in raw_obs.keys():
+                obs = raw_obs['obs'][:].astype(np.float32)
+            else:
+                obs_key = list(raw_obs.keys())[0]
+                obs = raw_obs[obs_key][:].astype(np.float32)
+        else:
+            obs = raw_obs.astype(np.float32)
+    else:
+        obs = np.concatenate([
+            raw_obs[key] for key in obs_keys
+        ], axis=-1).astype(np.float32)
 
-    if abs_action:
+    if abs_action and not finetune:
         is_dual_arm = False
         if raw_actions.shape[-1] == 14:
             # dual arm

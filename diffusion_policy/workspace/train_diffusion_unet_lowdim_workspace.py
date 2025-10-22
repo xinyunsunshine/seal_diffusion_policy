@@ -60,6 +60,9 @@ class TrainDiffusionUnetLowdimWorkspace(BaseWorkspace):
         self.global_step = 0
         self.epoch = 0
 
+        # Initialize for fine-tuning support
+        self.pretrained_normalizer = None
+
     def run(self):
         cfg = copy.deepcopy(self.cfg)
 
@@ -84,8 +87,27 @@ class TrainDiffusionUnetLowdimWorkspace(BaseWorkspace):
         dataset = hydra.utils.instantiate(cfg.task.dataset)
         assert isinstance(dataset, BaseLowdimDataset)
         train_dataloader = DataLoader(dataset, **cfg.dataloader)
-        normalizer = dataset.get_normalizer()
-
+        
+        # Use pretrained normalizer if finetuning, otherwise compute from dataset
+        if cfg.training.finetune:
+            checkpoint = torch.load(cfg.training.pretrained_ckpt_path, map_location='cpu', weights_only=False)
+            if 'cfg' in checkpoint and 'task' in checkpoint['cfg'] and 'dataset' in checkpoint['cfg']['task']:
+                    pretrained_dataset_cfg = checkpoint['cfg']['task']['dataset']
+                    print(f"Loading dataset config from pretrained checkpoint: {pretrained_dataset_cfg}")
+                    
+                    # Create dataset using pretrained config
+                    pretrained_dataset = hydra.utils.instantiate(pretrained_dataset_cfg)
+                    assert isinstance(pretrained_dataset, BaseLowdimDataset)
+                    
+                    # Get normalizer from the pretrained dataset
+                    normalizer = pretrained_dataset.get_normalizer()
+                    print("Using normalizer from pretrained dataset configuration")
+            else:
+                print("Warning: No dataset config found in pretrained checkpoint, using current config")
+                normalizer = dataset.get_normalizer()
+        else:
+            normalizer = dataset.get_normalizer()
+            
         # configure validation dataset
         val_dataset = dataset.get_validation_dataset()
         val_dataloader = DataLoader(val_dataset, **cfg.val_dataloader)
@@ -159,13 +181,15 @@ class TrainDiffusionUnetLowdimWorkspace(BaseWorkspace):
             cfg.training.sample_every = 1
 
         policy = self.model
-        if cfg.training.use_ema:
-            policy = self.ema_model
-        policy.eval()
-        runner_log = env_runner.run(policy)
-        # log all
-        print(runner_log)
+        # if cfg.training.use_ema:
+        #     policy = self.ema_model
+        # policy.eval()
+        # runner_log = env_runner.run(policy)
+        # # log all
+        # print(runner_log)
         # breakpoint()
+        # policy.train()
+
 
         # training loop
         log_path = os.path.join(self.output_dir, 'logs.json.txt')
